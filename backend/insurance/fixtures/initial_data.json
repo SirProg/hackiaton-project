@@ -1,0 +1,129 @@
+[
+  {
+    "model": "insurance.specialty",
+    "pk": 1,
+    "fields": { "nombre": "Cardiología" }
+  },
+  {
+    "model": "insurance.specialty",
+    "pk": 2,
+    "fields": { "nombre": "Ginecología" }
+  },
+  {
+    "model": "insurance.specialty",
+    "pk": 3,
+    "fields": { "nombre": "Traumatología" }
+  },
+  {
+    "model": "insurance.specialty",
+    "pk": 4,
+    "fields": { "nombre": "Gastroenterología" }
+  },
+
+  {
+    "model": "insurance.hospital",
+    "pk": 1,
+    "fields": {
+      "nombre": "Hospital Metropolitano",
+      "direccion": "",
+      "es_red": true
+    }
+  },
+  {
+    "model": "insurance.hospital",
+    "pk": 2,
+    "fields": {
+      "nombre": "Clínica Santa Lucía",
+      "direccion": "",
+      "es_red": true
+    }
+  },
+  {
+    "model": "insurance.hospital",
+    "pk": 3,
+    "fields": {
+      "nombre": "Hospital del Norte",
+      "direccion": "",
+      "es_red": false
+    }
+  },
+
+  {
+    "model": "insurance.insuranceplan",
+    "pk": 1,
+    "fields": {
+      "nombre": "Plan Premium",
+      "descripcion": "Cobertura alta con bajos copagos"
+    }
+  },
+  {
+    "model": "insurance.insuranceplan",
+    "pk": 2,
+    "fields": { "nombre": "Plan Básico", "descripcion": "Cobertura estándar" }
+  },
+
+  {
+    "model": "insurance.copaymentrule",
+    "pk": 1,
+    "fields": {
+      "plan": 1,
+      "specialty": 1,
+      "hospital": 1,
+      "porcentaje_copago": "10.00",
+      "max_copago": null
+    }
+  },
+  {
+    "model": "insurance.copaymentrule",
+    "pk": 2,
+    "fields": {
+      "plan": 1,
+      "specialty": 2,
+      "hospital": 1,
+      "porcentaje_copago": "15.00",
+      "max_copago": null
+    }
+  },
+  {
+    "model": "insurance.copaymentrule",
+    "pk": 3,
+    "fields": {
+      "plan": 2,
+      "specialty": 1,
+      "hospital": 2,
+      "porcentaje_copago": "30.00",
+      "max_copago": null
+    }
+  },
+
+  {
+    "model": "patients.patient",
+    "pk": 1,
+    "fields": {
+      "nombre": "Juan Pérez",
+      "numero_poliza": "POL-001",
+      "edad": 35,
+      "plan": 1
+    }
+  },
+  {
+    "model": "patients.patient",
+    "pk": 2,
+    "fields": {
+      "nombre": "María García",
+      "numero_poliza": "POL-002",
+      "edad": 28,
+      "plan": 2
+    }
+  },
+  {
+    "model": "patients.patient",
+    "pk": 3,
+    "fields": {
+      "nombre": "Carlos López",
+      "numero_poliza": "POL-003",
+      "edad": 52,
+      "plan": 1
+    }
+  }
+]
