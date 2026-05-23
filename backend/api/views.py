@@ -34,13 +34,24 @@ def _build_response_message(state: dict, plan_nombre: str) -> str:
         f"Basándome en tus síntomas te recomiendo acudir a **{specialty.capitalize()}** "
         f"(visita tipo: {tipo_visita.replace('_', ' ')}). "
         f"Con tu **{plan_nombre}** ({estado_deducible}), "
-        f"estas son tus mejores opciones en la red:"
+        f"estas son tus opciones disponibles:"
     )
-    recomendacion = (
-        f"🏆 Recomendación: **{mejor['nombre']}** — "
-        f"menor copago (${mejor['copago']:.0f}) y "
-        f"distancia de {mejor['distancia_km']} km."
-    )
+
+    if mejor["es_red"]:
+        recomendacion = (
+            f"🏆 Recomendación: **{mejor['nombre']}** — "
+            f"menor copago (${mejor['copago']:.0f}) y "
+            f"a solo {mejor['distancia_km']} km de distancia."
+        )
+    else:
+        recomendacion = (
+            f"Entendemos que no siempre es fácil encontrar la opción perfecta. "
+            f"Aunque **{mejor['nombre']}** está fuera de tu red, "
+            f"es la alternativa más conveniente considerando su cercanía "
+            f"({mejor['distancia_km']} km) y su copago estimado de ${mejor['copago']:.0f}. "
+            f"Te recomendamos llamarles antes para confirmar costos con tu plan."
+        )
+
     return f"{intro}\n\n{recomendacion}"
 
 

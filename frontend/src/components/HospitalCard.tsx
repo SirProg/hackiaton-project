@@ -19,8 +19,8 @@ export const HospitalCard = ({ data }: { data: HospitalData }) => {
       }`}
     >
       {data.recomendado && (
-        <div className="absolute top-0 right-0 bg-blue-600 text-white text-[10px] font-bold px-3 py-1 rounded-bl-lg uppercase tracking-wider">
-          🏆 Mejor Opción
+        <div className={`absolute top-0 right-0 text-white text-[10px] font-bold px-3 py-1 rounded-bl-lg uppercase tracking-wider ${data.en_red ? 'bg-blue-600' : 'bg-amber-500'}`}>
+          {data.en_red ? '🏆 Mejor Opción' : '📍 Más Cercano'}
         </div>
       )}
       <div className="flex justify-between items-start pt-1">
@@ -28,11 +28,16 @@ export const HospitalCard = ({ data }: { data: HospitalData }) => {
           <h3 className="font-bold text-slate-800 text-lg leading-tight">{data.nombre}</h3>
           <p className="text-sm text-gray-500 capitalize">{data.especialidad}</p>
         </div>
-        <span className={`text-xs font-semibold px-2 py-1 rounded-full whitespace-nowrap 
-          ${data.en_red ? 'bg-green-50 text-green-700 border border-green-200' : 'bg-red-50 text-red-700 border border-red-200'}`}>
+        <span className={`text-xs font-semibold px-2 py-1 rounded-full whitespace-nowrap
+          ${data.en_red ? 'bg-green-50 text-green-700 border border-green-200' : 'bg-amber-50 text-amber-700 border border-amber-200'}`}>
           {data.en_red ? '✅ En Red' : '⚠️ Fuera de red'}
         </span>
       </div>
+      {data.recomendado && !data.en_red && (
+        <p className="text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2 leading-relaxed">
+          Esta opción está fuera de tu red, pero es la más conveniente por cercanía y costo. Te recomendamos llamar antes para confirmar cobertura.
+        </p>
+      )}
       <div className="grid grid-cols-3 gap-2 mt-2 border-t border-gray-100 pt-3">
         <div className="flex flex-col">
           <span className="text-xs text-gray-500 mb-1">Copago Estimado</span>

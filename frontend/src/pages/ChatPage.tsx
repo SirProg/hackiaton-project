@@ -1,5 +1,7 @@
 import { useState, useRef, useEffect } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
+import ReactMarkdown from "react-markdown";
+import remarkGfm from "remark-gfm";
 import { HospitalCard } from "../components/HospitalCard";
 import type { HospitalData } from "../components/HospitalCard";
 
@@ -169,13 +171,29 @@ function ChatPage() {
               </span>
 
               <div
-                className={`border p-4 shadow-sm max-w-[85%] leading-relaxed whitespace-pre-wrap
+                className={`border p-4 shadow-sm max-w-[85%] leading-relaxed
                 ${msg.rol === "usuario"
                   ? "bg-blue-600 text-white rounded-2xl rounded-tr-sm border-blue-700"
                   : "bg-white text-slate-800 rounded-2xl rounded-tl-sm border-gray-200"
                 }`}
               >
-                {msg.texto}
+                {msg.rol === "agente" ? (
+                  <ReactMarkdown
+                    remarkPlugins={[remarkGfm]}
+                    components={{
+                      strong: ({ children }) => (
+                        <strong className="font-bold">{children}</strong>
+                      ),
+                      p: ({ children }) => (
+                        <p className="mb-1 last:mb-0">{children}</p>
+                      ),
+                    }}
+                  >
+                    {msg.texto}
+                  </ReactMarkdown>
+                ) : (
+                  msg.texto
+                )}
               </div>
 
               {msg.hospitales && msg.hospitales.length > 0 && (
