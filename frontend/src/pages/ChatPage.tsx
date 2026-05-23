@@ -76,7 +76,8 @@ function ChatPage() {
     setCargando(true);
 
     try {
-      const respuesta = await fetch("http://localhost:8000/api/agente/", {
+      const API_URL = import.meta.env.VITE_API_URL ?? "http://localhost:8000";
+      const respuesta = await fetch(`${API_URL}/api/agente/`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({

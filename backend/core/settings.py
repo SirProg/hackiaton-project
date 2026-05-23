@@ -125,8 +125,14 @@ USE_TZ = True
 STATIC_URL = 'static/'
 
 # Default primary key field type
-CORS_ALLOW_ALL_ORIGINS = True
-#Esto es para permitir que cualquier origen pueda acceder a la API, lo cual es útil durante el desarrollo para el hackIAton.
+CORS_ALLOW_ALL_ORIGINS = DEBUG  # En desarrollo permite todo; en producción usa la lista
+
+CORS_ALLOWED_ORIGINS = [
+    o.strip()
+    for o in os.environ.get("ALLOWED_ORIGINS", "http://localhost:5173").split(",")
+    if o.strip()
+]
+
 REST_FRAMEWORK = {
     'DEFAULT_PERMISSION_CLASSES': [
         'rest_framework.permissions.AllowAny',
