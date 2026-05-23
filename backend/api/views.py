@@ -1,50 +1,116 @@
+import os
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import status
-from patients.models import Patient
-from patients.serializers import PatientSerializer
-from .services import get_specialty_from_symptom, get_copago_options, get_friendly_message
+from groq import Groq
+
+from insurance.models import InsurancePlan, CopaymentRule
+from insurance.serializers import InsurancePlanSerializer
+from agent.graph import agent_graph
+from agent.nodes.symptom_router import _SYSTEM_PROMPT
+
+
+def _build_response_message(state: dict, plan_nombre: str) -> str:
+    """Genera el mensaje de texto del agente a partir del estado final."""
+    if state.get("needs_clarification"):
+        return state.get("clarification_question", "¿Puedes describir mejor tu síntoma?")
+
+    specialty = state.get("specialty", "")
+    tipo_visita = state.get("tipo_visita", "")
+    copago = state.get("copago_amount", 0)
+    hospitals = state.get("hospitals", [])
+    deductible_met = state.get("deductible_met", False)
+    estado_deducible = "deducible cumplido" if deductible_met else "deducible no cumplido"
+
+    if not hospitals:
+        return (
+            f"Basándome en tus síntomas te recomiendo {specialty}. "
+            f"Con tu {plan_nombre} ({estado_deducible}), el copago estimado es ${copago:.0f}. "
+            "No encontré hospitales en red para esta especialidad en este momento."
+        )
+
+    mejor = hospitals[0]
+    intro = (
+        f"Basándome en tus síntomas te recomiendo acudir a **{specialty.capitalize()}** "
+        f"(visita tipo: {tipo_visita.replace('_', ' ')}). "
+        f"Con tu **{plan_nombre}** ({estado_deducible}), "
+        f"estas son tus mejores opciones en la red:"
+    )
+    recomendacion = (
+        f"🏆 Recomendación: **{mejor['nombre']}** — "
+        f"menor copago (${mejor['copago']:.0f}) y "
+        f"distancia de {mejor['distancia_km']} km."
+    )
+    return f"{intro}\n\n{recomendacion}"
+
 
 class AgenteCopago(APIView):
     def post(self, request):
-        poliza = request.data.get("numero_poliza")
+        plan_id = request.data.get("plan_id")
         sintoma = request.data.get("sintoma")
+        session_id = request.data.get("session_id", "default")
+        deductible_met = bool(request.data.get("deductible_met", False))
 
-        if not poliza or not sintoma:
+        if not plan_id or not sintoma:
             return Response(
-                {"error": "Se requieren numero_poliza y sintoma"},
-                status=status.HTTP_400_BAD_REQUEST
+                {"error": "Se requieren plan_id y sintoma"},
+                status=status.HTTP_400_BAD_REQUEST,
             )
 
         try:
-            paciente = Patient.objects.select_related("plan").get(numero_poliza=poliza)
-        except Patient.DoesNotExist:
-            return Response({"error": "Paciente no encontrado"}, status=404)
+            plan = InsurancePlan.objects.get(pk=plan_id)
+        except InsurancePlan.DoesNotExist:
+            return Response({"error": "Plan no encontrado"}, status=404)
 
-        especialidad = get_specialty_from_symptom(sintoma)
-        specialty_obj, opciones = get_copago_options(paciente, especialidad)
+        initial_state = {
+            "messages": [{"role": "user", "content": sintoma}],
+            "plan_id": plan.pk,
+            "deductible_met": deductible_met,
+            "symptom": sintoma,
+            "specialty": "",
+            "tipo_visita": "",
+            "copago_amount": 0.0,
+            "hospitals": [],
+            "needs_clarification": False,
+            "clarification_question": "",
+            "error": None,
+        }
 
-        if not specialty_obj:
-            return Response({
-                "especialidad_sugerida": especialidad,
-                "mensaje": "No encontramos esa especialidad en nuestra red.",
-                "opciones": []
-            })
+        config = {"configurable": {"thread_id": session_id}}
+        result = agent_graph.invoke(initial_state, config=config)
 
-        mensaje = get_friendly_message(paciente, sintoma, especialidad, opciones)
+        mensaje = _build_response_message(result, plan.nombre)
 
         return Response({
-            "paciente": paciente.nombre,
-            "plan": paciente.plan.nombre,
-            "sintoma": sintoma,
-            "especialidad_sugerida": especialidad,
             "mensaje_agente": mensaje,
-            "opciones": opciones
+            "especialidad_sugerida": result.get("specialty", ""),
+            "tipo_visita": result.get("tipo_visita", ""),
+            "copago_estimado": result.get("copago_amount", 0),
+            "needs_clarification": result.get("needs_clarification", False),
+            "clarification_question": result.get("clarification_question", ""),
+            "opciones": result.get("hospitals", []),
         })
+
+
+class PlanesListView(APIView):
+    def get(self, request):
+        planes = InsurancePlan.objects.prefetch_related("copagos").all()
+        data = [
+            {
+                "id": p.pk,
+                "nombre": p.nombre,
+                "descripcion": p.descripcion,
+                "deducible_anual": float(p.deducible_anual),
+            }
+            for p in planes
+        ]
+        return Response(data)
 
 
 class PatientDetail(APIView):
     def get(self, request, numero_poliza):
+        from patients.models import Patient
+        from patients.serializers import PatientSerializer
         try:
             p = Patient.objects.select_related("plan").get(numero_poliza=numero_poliza)
             return Response(PatientSerializer(p).data)

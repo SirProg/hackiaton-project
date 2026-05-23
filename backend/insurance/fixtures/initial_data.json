@@ -1,129 +1,102 @@
 [
-  {
-    "model": "insurance.specialty",
-    "pk": 1,
-    "fields": { "nombre": "Cardiología" }
-  },
-  {
-    "model": "insurance.specialty",
-    "pk": 2,
-    "fields": { "nombre": "Ginecología" }
-  },
-  {
-    "model": "insurance.specialty",
-    "pk": 3,
-    "fields": { "nombre": "Traumatología" }
-  },
-  {
-    "model": "insurance.specialty",
-    "pk": 4,
-    "fields": { "nombre": "Gastroenterología" }
-  },
+  { "model": "insurance.specialty", "pk": 1,  "fields": { "nombre": "cardiologia",       "tipo_visita": "urgencias",      "urgencia": "alta"  } },
+  { "model": "insurance.specialty", "pk": 2,  "fields": { "nombre": "neurologia",         "tipo_visita": "especialista",   "urgencia": "media" } },
+  { "model": "insurance.specialty", "pk": 3,  "fields": { "nombre": "ortopedia",          "tipo_visita": "especialista",   "urgencia": "media" } },
+  { "model": "insurance.specialty", "pk": 4,  "fields": { "nombre": "pediatria",          "tipo_visita": "medico_general", "urgencia": "baja"  } },
+  { "model": "insurance.specialty", "pk": 5,  "fields": { "nombre": "dermatologia",       "tipo_visita": "especialista",   "urgencia": "baja"  } },
+  { "model": "insurance.specialty", "pk": 6,  "fields": { "nombre": "medicina_general",   "tipo_visita": "medico_general", "urgencia": "baja"  } },
+  { "model": "insurance.specialty", "pk": 7,  "fields": { "nombre": "endocrinologia",     "tipo_visita": "especialista",   "urgencia": "media" } },
+  { "model": "insurance.specialty", "pk": 8,  "fields": { "nombre": "neumologia",         "tipo_visita": "especialista",   "urgencia": "media" } },
+  { "model": "insurance.specialty", "pk": 9,  "fields": { "nombre": "urgencias",          "tipo_visita": "urgencias",      "urgencia": "alta"  } },
+  { "model": "insurance.specialty", "pk": 10, "fields": { "nombre": "laboratorios",       "tipo_visita": "laboratorios",   "urgencia": "baja"  } },
 
   {
-    "model": "insurance.hospital",
-    "pk": 1,
+    "model": "insurance.hospital", "pk": 1,
     "fields": {
-      "nombre": "Hospital Metropolitano",
-      "direccion": "",
-      "es_red": true
+      "nombre": "Hospital del Norte", "ciudad": "Ciudad A",
+      "direccion": "Av. Norte 123", "es_red": true,
+      "distancia_km": "2.1", "calificacion": "4.5", "telefono": "+593 2 555-0101"
     }
   },
   {
-    "model": "insurance.hospital",
-    "pk": 2,
+    "model": "insurance.hospital", "pk": 2,
     "fields": {
-      "nombre": "Clínica Santa Lucía",
-      "direccion": "",
-      "es_red": true
+      "nombre": "Clínica San Marcos", "ciudad": "Ciudad A",
+      "direccion": "Calle San Marcos 456", "es_red": true,
+      "distancia_km": "4.7", "calificacion": "4.2", "telefono": "+593 2 555-0102"
     }
   },
   {
-    "model": "insurance.hospital",
-    "pk": 3,
+    "model": "insurance.hospital", "pk": 3,
     "fields": {
-      "nombre": "Hospital del Norte",
-      "direccion": "",
-      "es_red": false
+      "nombre": "Centro Médico Sur", "ciudad": "Ciudad A",
+      "direccion": "Av. Sur 789", "es_red": true,
+      "distancia_km": "1.2", "calificacion": "3.9", "telefono": "+593 2 555-0103"
+    }
+  },
+  {
+    "model": "insurance.hospital", "pk": 4,
+    "fields": {
+      "nombre": "Hospital Internacional", "ciudad": "Ciudad B",
+      "direccion": "Blvd. Internacional 1000", "es_red": false,
+      "distancia_km": "12.5", "calificacion": "4.8", "telefono": "+593 4 555-0104"
     }
   },
 
-  {
-    "model": "insurance.insuranceplan",
-    "pk": 1,
-    "fields": {
-      "nombre": "Plan Premium",
-      "descripcion": "Cobertura alta con bajos copagos"
-    }
-  },
-  {
-    "model": "insurance.insuranceplan",
-    "pk": 2,
-    "fields": { "nombre": "Plan Básico", "descripcion": "Cobertura estándar" }
-  },
+  { "model": "insurance.hospitalspecialty", "pk": 1,  "fields": { "hospital": 1, "specialty": 1  } },
+  { "model": "insurance.hospitalspecialty", "pk": 2,  "fields": { "hospital": 1, "specialty": 2  } },
+  { "model": "insurance.hospitalspecialty", "pk": 3,  "fields": { "hospital": 1, "specialty": 6  } },
+  { "model": "insurance.hospitalspecialty", "pk": 4,  "fields": { "hospital": 1, "specialty": 9  } },
+  { "model": "insurance.hospitalspecialty", "pk": 5,  "fields": { "hospital": 2, "specialty": 1  } },
+  { "model": "insurance.hospitalspecialty", "pk": 6,  "fields": { "hospital": 2, "specialty": 3  } },
+  { "model": "insurance.hospitalspecialty", "pk": 7,  "fields": { "hospital": 2, "specialty": 5  } },
+  { "model": "insurance.hospitalspecialty", "pk": 8,  "fields": { "hospital": 2, "specialty": 10 } },
+  { "model": "insurance.hospitalspecialty", "pk": 9,  "fields": { "hospital": 3, "specialty": 9  } },
+  { "model": "insurance.hospitalspecialty", "pk": 10, "fields": { "hospital": 3, "specialty": 6  } },
+  { "model": "insurance.hospitalspecialty", "pk": 11, "fields": { "hospital": 3, "specialty": 4  } },
+  { "model": "insurance.hospitalspecialty", "pk": 12, "fields": { "hospital": 4, "specialty": 1  } },
+  { "model": "insurance.hospitalspecialty", "pk": 13, "fields": { "hospital": 4, "specialty": 2  } },
+  { "model": "insurance.hospitalspecialty", "pk": 14, "fields": { "hospital": 4, "specialty": 8  } },
 
   {
-    "model": "insurance.copaymentrule",
-    "pk": 1,
-    "fields": {
-      "plan": 1,
-      "specialty": 1,
-      "hospital": 1,
-      "porcentaje_copago": "10.00",
-      "max_copago": null
-    }
+    "model": "insurance.insuranceplan", "pk": 1,
+    "fields": { "nombre": "Plan Básico",   "descripcion": "Cobertura estándar con deducible alto",   "deducible_anual": "1500.00", "fuera_de_red_multiplicador": "2.5" }
   },
   {
-    "model": "insurance.copaymentrule",
-    "pk": 2,
-    "fields": {
-      "plan": 1,
-      "specialty": 2,
-      "hospital": 1,
-      "porcentaje_copago": "15.00",
-      "max_copago": null
-    }
+    "model": "insurance.insuranceplan", "pk": 2,
+    "fields": { "nombre": "Plan Plata",    "descripcion": "Cobertura intermedia, buen equilibrio",   "deducible_anual": "800.00",  "fuera_de_red_multiplicador": "2.0" }
   },
   {
-    "model": "insurance.copaymentrule",
-    "pk": 3,
-    "fields": {
-      "plan": 2,
-      "specialty": 1,
-      "hospital": 2,
-      "porcentaje_copago": "30.00",
-      "max_copago": null
-    }
+    "model": "insurance.insuranceplan", "pk": 3,
+    "fields": { "nombre": "Plan Oro",      "descripcion": "Cobertura alta con deducible bajo",        "deducible_anual": "300.00",  "fuera_de_red_multiplicador": "1.5" }
+  },
+  {
+    "model": "insurance.insuranceplan", "pk": 4,
+    "fields": { "nombre": "Plan Platino",  "descripcion": "Cobertura premium, sin deducible",         "deducible_anual": "0.00",    "fuera_de_red_multiplicador": "1.2" }
   },
 
-  {
-    "model": "patients.patient",
-    "pk": 1,
-    "fields": {
-      "nombre": "Juan Pérez",
-      "numero_poliza": "POL-001",
-      "edad": 35,
-      "plan": 1
-    }
-  },
-  {
-    "model": "patients.patient",
-    "pk": 2,
-    "fields": {
-      "nombre": "María García",
-      "numero_poliza": "POL-002",
-      "edad": 28,
-      "plan": 2
-    }
-  },
-  {
-    "model": "patients.patient",
-    "pk": 3,
-    "fields": {
-      "nombre": "Carlos López",
-      "numero_poliza": "POL-003",
-      "edad": 52,
-      "plan": 1
-    }
-  }
+  { "model": "insurance.copaymentrule", "pk": 1,  "fields": { "plan": 1, "tipo_visita": "medico_general", "monto_deducible_cumplido": "20.00",  "monto_deducible_no_cumplido": "80.00"  } },
+  { "model": "insurance.copaymentrule", "pk": 2,  "fields": { "plan": 1, "tipo_visita": "especialista",   "monto_deducible_cumplido": "40.00",  "monto_deducible_no_cumplido": "150.00" } },
+  { "model": "insurance.copaymentrule", "pk": 3,  "fields": { "plan": 1, "tipo_visita": "urgencias",      "monto_deducible_cumplido": "150.00", "monto_deducible_no_cumplido": "300.00" } },
+  { "model": "insurance.copaymentrule", "pk": 4,  "fields": { "plan": 1, "tipo_visita": "laboratorios",   "monto_deducible_cumplido": "15.00",  "monto_deducible_no_cumplido": "60.00"  } },
+
+  { "model": "insurance.copaymentrule", "pk": 5,  "fields": { "plan": 2, "tipo_visita": "medico_general", "monto_deducible_cumplido": "15.00",  "monto_deducible_no_cumplido": "50.00"  } },
+  { "model": "insurance.copaymentrule", "pk": 6,  "fields": { "plan": 2, "tipo_visita": "especialista",   "monto_deducible_cumplido": "30.00",  "monto_deducible_no_cumplido": "100.00" } },
+  { "model": "insurance.copaymentrule", "pk": 7,  "fields": { "plan": 2, "tipo_visita": "urgencias",      "monto_deducible_cumplido": "100.00", "monto_deducible_no_cumplido": "200.00" } },
+  { "model": "insurance.copaymentrule", "pk": 8,  "fields": { "plan": 2, "tipo_visita": "laboratorios",   "monto_deducible_cumplido": "10.00",  "monto_deducible_no_cumplido": "40.00"  } },
+
+  { "model": "insurance.copaymentrule", "pk": 9,  "fields": { "plan": 3, "tipo_visita": "medico_general", "monto_deducible_cumplido": "10.00",  "monto_deducible_no_cumplido": "30.00"  } },
+  { "model": "insurance.copaymentrule", "pk": 10, "fields": { "plan": 3, "tipo_visita": "especialista",   "monto_deducible_cumplido": "20.00",  "monto_deducible_no_cumplido": "60.00"  } },
+  { "model": "insurance.copaymentrule", "pk": 11, "fields": { "plan": 3, "tipo_visita": "urgencias",      "monto_deducible_cumplido": "75.00",  "monto_deducible_no_cumplido": "150.00" } },
+  { "model": "insurance.copaymentrule", "pk": 12, "fields": { "plan": 3, "tipo_visita": "laboratorios",   "monto_deducible_cumplido": "5.00",   "monto_deducible_no_cumplido": "20.00"  } },
+
+  { "model": "insurance.copaymentrule", "pk": 13, "fields": { "plan": 4, "tipo_visita": "medico_general", "monto_deducible_cumplido": "5.00",   "monto_deducible_no_cumplido": "5.00"   } },
+  { "model": "insurance.copaymentrule", "pk": 14, "fields": { "plan": 4, "tipo_visita": "especialista",   "monto_deducible_cumplido": "15.00",  "monto_deducible_no_cumplido": "15.00"  } },
+  { "model": "insurance.copaymentrule", "pk": 15, "fields": { "plan": 4, "tipo_visita": "urgencias",      "monto_deducible_cumplido": "50.00",  "monto_deducible_no_cumplido": "50.00"  } },
+  { "model": "insurance.copaymentrule", "pk": 16, "fields": { "plan": 4, "tipo_visita": "laboratorios",   "monto_deducible_cumplido": "0.00",   "monto_deducible_no_cumplido": "0.00"   } },
+
+  { "model": "patients.patient", "pk": 1, "fields": { "nombre": "Juan Pérez",    "numero_poliza": "POL-001", "edad": 35, "plan": 2 } },
+  { "model": "patients.patient", "pk": 2, "fields": { "nombre": "María García",  "numero_poliza": "POL-002", "edad": 28, "plan": 3 } },
+  { "model": "patients.patient", "pk": 3, "fields": { "nombre": "Carlos López",  "numero_poliza": "POL-003", "edad": 52, "plan": 4 } },
+  { "model": "patients.patient", "pk": 4, "fields": { "nombre": "Ana Rodríguez", "numero_poliza": "POL-004", "edad": 41, "plan": 1 } }
 ]

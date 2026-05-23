@@ -3,11 +3,13 @@ from groq import Groq
 from insurance.models import CopaymentRule, Specialty
 from .prompts import symptom_to_specialty_prompt, friendly_message_prompt
 
-client = Groq(api_key=os.getenv("GROQ_API_KEY"))
 MODEL = "llama-3.1-8b-instant"
 
+def _get_client():
+    return Groq(api_key=os.getenv("GROQ_API_KEY"))
+
 def _chat(prompt: str, max_tokens: int = 300) -> str:
-    response = client.chat.completions.create(
+    response = _get_client().chat.completions.create(
         model=MODEL,
         max_tokens=max_tokens,
         messages=[{"role": "user", "content": prompt}]

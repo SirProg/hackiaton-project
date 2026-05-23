@@ -3,10 +3,10 @@ import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 
 const planesDisponibles = [
-  { id: 'plan-basico', nombre: 'Plan Básico', desc: 'Deducible alto, ideal para imprevistos mayores.', copagoEj: '$80 general', color: 'bg-slate-50 text-slate-700 border-slate-300' },
-  { id: 'plan-plata', nombre: 'Plan Plata', desc: 'Equilibrio entre prima mensual y costos de bolsillo.', copagoEj: '$50 general', color: 'bg-gray-100 text-gray-800 border-gray-400' },
-  { id: 'plan-oro', nombre: 'Plan Oro', desc: 'Menor deducible, mayor cobertura en especialistas.', copagoEj: '$30 general', color: 'bg-yellow-50 text-yellow-800 border-yellow-400' },
-  { id: 'plan-platino', nombre: 'Plan Platino', desc: 'Sin deducible, copagos fijos mínimos en toda la red.', copagoEj: '$5 general', color: 'bg-cyan-50 text-cyan-800 border-cyan-400' },
+  { id: 1, nombre: 'Plan Básico',  desc: 'Deducible alto, ideal para imprevistos mayores.',        copagoEj: '$80 general',  color: 'bg-slate-50 text-slate-700 border-slate-300'  },
+  { id: 2, nombre: 'Plan Plata',   desc: 'Equilibrio entre prima mensual y costos de bolsillo.',   copagoEj: '$50 general',  color: 'bg-gray-100 text-gray-800 border-gray-400'    },
+  { id: 3, nombre: 'Plan Oro',     desc: 'Menor deducible, mayor cobertura en especialistas.',     copagoEj: '$30 general',  color: 'bg-yellow-50 text-yellow-800 border-yellow-400' },
+  { id: 4, nombre: 'Plan Platino', desc: 'Sin deducible, copagos fijos mínimos en toda la red.',   copagoEj: '$5 general',   color: 'bg-cyan-50 text-cyan-800 border-cyan-400'      },
 ];
 
 
@@ -24,6 +24,7 @@ const FadeInSection = ({ children, delay = 0 }: { children: React.ReactNode, del
 export function LandingPage() {
   const navigate = useNavigate();
   const [planSeleccionado, setPlanSeleccionado] = useState(planesDisponibles[1]);
+  const [deducibleCumplido, setDeducibleCumplido] = useState(false);
 
   return (
     <div className="bg-white min-h-screen text-slate-900 font-sans selection:bg-blue-200 overflow-x-hidden">
@@ -150,11 +151,43 @@ export function LandingPage() {
               ))}
             </div>
 
-            <div className="flex justify-center mt-16">
-              <motion.button 
+            {/* Toggle deducible */}
+            <div className="flex flex-col items-center gap-4 mt-10 mb-6">
+              <p className="text-xl font-semibold text-slate-700">¿Ya cumpliste tu deducible anual?</p>
+              <div className="flex gap-4">
+                <button
+                  onClick={() => setDeducibleCumplido(false)}
+                  className={`px-8 py-3 rounded-full font-semibold text-lg border-2 transition-all ${
+                    !deducibleCumplido
+                      ? 'bg-slate-900 text-white border-slate-900'
+                      : 'bg-white text-slate-600 border-gray-200 hover:border-slate-400'
+                  }`}
+                >
+                  No todavía
+                </button>
+                <button
+                  onClick={() => setDeducibleCumplido(true)}
+                  className={`px-8 py-3 rounded-full font-semibold text-lg border-2 transition-all ${
+                    deducibleCumplido
+                      ? 'bg-green-600 text-white border-green-600'
+                      : 'bg-white text-slate-600 border-gray-200 hover:border-green-400'
+                  }`}
+                >
+                  Sí, ya lo cumplí
+                </button>
+              </div>
+              <p className="text-sm text-gray-400">
+                {deducibleCumplido
+                  ? 'Tus copagos serán los más bajos de tu plan.'
+                  : 'Tus copagos incluyen el costo antes del deducible.'}
+              </p>
+            </div>
+
+            <div className="flex justify-center mt-8">
+              <motion.button
                 whileHover={{ scale: 1.05 }}
                 whileTap={{ scale: 0.95 }}
-                onClick={() => navigate('/chat', { state: { planActivo: planSeleccionado } })}
+                onClick={() => navigate('/chat', { state: { planActivo: planSeleccionado, deducibleCumplido } })}
                 className="bg-blue-600 hover:bg-blue-700 text-white font-bold py-6 px-14 rounded-full transition-colors shadow-2xl flex items-center gap-3 text-2xl"
               >
                 <span>Hablar con Baymax</span>
