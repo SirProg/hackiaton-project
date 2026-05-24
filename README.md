@@ -1,6 +1,6 @@
 # 🏥 Estimador Agéntico de Copago y Cobertura para el Paciente
 
-> Agente conversacional con IA que ayuda al paciente a entender su beneficio **antes** de atenderse. El paciente ingresa su síntoma, el agente sugiere la especialidad médica adecuada y, cruzando datos con su plan de seguro, indica exactamente cuánto será su copago y qué hospital de la red le conviene más económicamente.
+> Agente conversacional con IA que ayuda al paciente a entender su beneficio **antes** de atenderse. El paciente describe su síntoma, el agente determina la especialidad médica adecuada y, cruzando datos con su plan de seguro, indica exactamente cuánto será su copago y qué hospitales de la red le convienen más económicamente.
 
 ---
 
@@ -8,9 +8,8 @@
 
 | Recurso | URL |
 |---|---|
-| Aplicación web | https://copago-estimador.vercel.app |
-| API Backend | https://copago-api.onrender.com |
-| Repositorio | https://github.com/tu-org/copago-estimador |
+| Aplicación web | https://hackiaton-project.vercel.app/ |
+| Repositorio | https://github.com/SirProg/hackiaton-project |
 
 ---
 
@@ -19,19 +18,16 @@
 1. [Descripción del Proyecto](#descripción-del-proyecto)
 2. [Características](#características)
 3. [Arquitectura del Agente](#arquitectura-del-agente)
-4. [Estructura de Carpetas](#estructura-de-carpetas)
-5. [Stack Tecnológico](#stack-tecnológico)
-6. [Requisitos Previos](#requisitos-previos)
-7. [Instalación y Configuración](#instalación-y-configuración)
-8. [Variables de Entorno](#variables-de-entorno)
-9. [Datos Mock](#datos-mock)
-10. [Uso de la Aplicación](#uso-de-la-aplicación)
+4. [Stack Tecnológico](#stack-tecnológico)
+5. [Estructura de Carpetas](#estructura-de-carpetas)
+6. [Modelos de Datos](#modelos-de-datos)
+7. [Datos Mock](#datos-mock)
+8. [Endpoints de la API](#endpoints-de-la-api)
+9. [Instalación y Configuración](#instalación-y-configuración)
+10. [Despliegue en Producción](#despliegue-en-producción)
 11. [Ejemplos de Conversación](#ejemplos-de-conversación)
-12. [Despliegue en Producción](#despliegue-en-producción)
-13. [Plan de Desarrollo (3 Días)](#plan-de-desarrollo-3-días)
-14. [Decisiones Técnicas](#decisiones-técnicas)
-15. [Equipo](#equipo)
-16. [Licencia](#licencia)
+12. [Equipo](#equipo)
+13. [Licencia](#licencia)
 
 ---
 
@@ -43,180 +39,92 @@ El sistema aborda un problema real: los pacientes frecuentemente desconocen cuá
 
 ### ¿Qué hace el agente?
 
-1. El paciente describe su síntoma en lenguaje natural (español o inglés)
-2. El agente clasifica el síntoma y determina la especialidad médica correspondiente
-3. Consulta el plan de seguro del paciente (deducible, copagos, red de hospitales)
-4. Calcula el costo exacto según el tipo de visita y el estado del deducible
-5. Presenta un ranking de hospitales en la red ordenados por menor costo
-6. Responde preguntas de seguimiento y recuerda el contexto de la conversación
+1. El paciente selecciona su plan de seguro e indica si cumplió su deducible anual
+2. Describe su síntoma en lenguaje natural (español)
+3. El agente clasifica el síntoma — si es ambiguo, hace preguntas aclaratorias
+4. Determina la especialidad médica y el tipo de visita correspondiente
+5. Calcula el copago exacto según el plan, el deducible y la red del hospital
+6. Presenta un ranking de hasta 3 hospitales ordenados por menor copago y distancia
+7. Cuando el mejor hospital está fuera de red, responde con empatía y justifica la recomendación por cercanía y costo
 
 ---
 
 ## Características
 
-- **Enrutamiento de síntomas** — clasifica síntomas en lenguaje natural y los mapea a la especialidad correcta usando el LLM
-- **Cálculo de copago personalizado** — considera deducible (cumplido/no cumplido), red (dentro/fuera), y tipo de visita (médico general, especialista, urgencias, laboratorios)
-- **Comparación de hospitales** — recupera y ordena los mejores 3 hospitales de la red usando búsqueda semántica (RAG con ChromaDB)
-- **Tarjeta de comparación estructurada** — el frontend renderiza una tabla visual con costos, no solo texto plano
-- **Memoria multi-turno** — el agente recuerda el plan del paciente y síntomas anteriores durante la sesión
-- **Preguntas aclaratorias** — cuando el síntoma es ambiguo, el agente hace preguntas dirigidas antes de recomendar
-- **Respuestas en streaming** — las respuestas se transmiten token a token vía SSE para una experiencia fluida
-- **Selector de plan de seguro** — el paciente elige su plan al inicio, antes de la primera consulta
-- **Manejo de casos borde** — responde correctamente cuando el síntoma no tiene cobertura, el hospital está fuera de red, o el deducible no se ha cumplido
+- **Enrutamiento de síntomas** — clasifica síntomas en lenguaje natural con LLM (Groq) y detecta ambigüedad automáticamente
+- **Preguntas aclaratorias** — cuando el síntoma es ambiguo, el agente pregunta antes de recomendar
+- **Cálculo de copago personalizado** — considera deducible (cumplido/no cumplido), red (dentro/fuera), y tipo de visita
+- **Comparación de hospitales** — recupera y ordena los mejores 3 hospitales por menor copago y distancia
+- **Tarjeta visual de comparación** — el frontend renderiza una tarjeta por hospital con copago, distancia y calificación
+- **Memoria multi-turno** — el agente recuerda el contexto de la sesión usando `MemorySaver` de LangGraph
+- **Respuestas en Markdown** — negrita, párrafos y formato renderizados con `react-markdown` + `remark-gfm`
+- **Selector de plan + deducible** — el paciente configura su situación antes de iniciar el chat
+- **Manejo empático de hospitales fuera de red** — mensaje diferenciado con justificación de cercanía y costo
 
 ---
 
 ## Arquitectura del Agente
 
-El agente está construido con **LangGraph**, un framework de grafos de estado para agentes multi-paso. Cada nodo del grafo cumple una función específica y recibe el estado acumulado del anterior.
+El agente está construido con **LangGraph**, un framework de grafos de estado para agentes multi-paso. Cada nodo cumple una función específica y recibe el estado acumulado del anterior.
 
 ```
 Entrada del paciente
-(síntoma + ID del plan)
-        │
-        ▼
-┌─────────────────────────┐
-│     Enrutador de        │  El LLM clasifica el síntoma.
-│       Síntomas          │  Si es ambiguo, genera preguntas
-└────────────┬────────────┘  aclaratorias y espera respuesta.
-             │
-             ▼
-┌─────────────────────────┐
-│   Buscador de           │  Búsqueda semántica en ChromaDB
-│    Especialidad         │  sobre la tabla síntoma → especialidad.
-└────────────┬────────────┘
-             │
-             ▼
-┌─────────────────────────┐
-│   Motor de Cálculo      │  Aplica reglas del plan de seguro:
-│      de Copago          │  tipo de visita, deducible, red.
-└────────────┬────────────┘
-             │
-             ▼
-┌─────────────────────────┐
-│   Clasificador de       │  ChromaDB recupera hospitales
-│     Hospitales          │  filtrados por especialidad y red.
-└────────────┬────────────┘  Ordena por menor copago.
-             │
-             ▼
-  Respuesta estructurada
-  transmitida via SSE
-  al frontend (Next.js)
+(síntoma + plan_id + deductible_met)
+           │
+           ▼
+┌──────────────────────────────┐
+│       symptom_router         │  Groq (llama-3.1-8b-instant) clasifica
+│                              │  el síntoma. Si es ambiguo, genera una
+│  agent/nodes/                │  pregunta aclaratoria y detiene el grafo.
+│  symptom_router.py           │
+└─────────────┬────────────────┘
+              │ needs_clarification = False
+              ▼
+┌──────────────────────────────┐
+│      specialty_matcher       │  Busca la especialidad en la base de datos
+│                              │  (Django ORM). Determina el tipo de visita:
+│  agent/nodes/                │  medico_general | especialista |
+│  specialty_matcher.py        │  urgencias | laboratorios
+└─────────────┬────────────────┘
+              │
+              ▼
+┌──────────────────────────────┐
+│      cost_calculator         │  Aplica las reglas del plan de seguro:
+│                              │  monto según deducible cumplido/no cumplido
+│  agent/nodes/                │  y multiplicador fuera de red.
+│  cost_calculator.py          │  Resultado: copago_amount en dólares.
+└─────────────┬────────────────┘
+              │
+              ▼
+┌──────────────────────────────┐
+│      hospital_ranker         │  Filtra hospitales que ofrecen la
+│                              │  especialidad requerida. Aplica multiplicador
+│  agent/nodes/                │  fuera de red. Ordena por menor copago
+│  hospital_ranker.py          │  y distancia. Devuelve top 3.
+└─────────────┬────────────────┘
+              │
+              ▼
+   Respuesta estructurada
+   con mensaje Markdown +
+   lista de HospitalResult
+   enviada al frontend
 ```
 
 ### Estado del Agente (`AgentState`)
 
 ```python
 class AgentState(TypedDict):
-    messages: list[BaseMessage]       # Historial de la conversación
-    plan_id: str                      # ID del plan de seguro del paciente
-    symptom: str                      # Síntoma ingresado por el paciente
-    specialty: str                    # Especialidad determinada por el agente
-    visit_type: str                   # primary_care | specialist | er | labs
-    deductible_met: bool              # ¿El deducible anual está cumplido?
-    copay_amount: float               # Monto de copago calculado
-    hospitals: list[HospitalResult]   # Hospitales rankeados por costo
-    needs_clarification: bool         # ¿El agente necesita más información?
-    clarification_question: str       # Pregunta aclaratoria si aplica
-```
-
----
-
-## Estructura de Carpetas
-
-```
-copago-estimador/
-│
-├── frontend/                              # Aplicación Next.js 14 (React)
-│   ├── app/
-│   │   ├── layout.tsx                     # Layout raíz, fuentes, estilos globales
-│   │   ├── page.tsx                       # Página de inicio + selector de plan
-│   │   ├── globals.css                    # Estilos globales con variables Tailwind
-│   │   └── chat/
-│   │       └── page.tsx                   # Interfaz principal del chat
-│   │
-│   ├── components/
-│   │   ├── chat/
-│   │   │   ├── ChatWindow.tsx             # Lista de mensajes + scroll automático
-│   │   │   ├── ChatInput.tsx              # Campo de entrada + botón de envío
-│   │   │   └── MessageBubble.tsx          # Burbuja de mensaje usuario/agente
-│   │   ├── cards/
-│   │   │   ├── HospitalCard.tsx           # Tarjeta de comparación de hospitales
-│   │   │   ├── CopayBadge.tsx             # Píldora de costo (red/fuera de red)
-│   │   │   └── PlanSummaryCard.tsx        # Resumen del plan activo del paciente
-│   │   └── ui/
-│   │       ├── PlanSelector.tsx           # Selector de plan en onboarding
-│   │       ├── LoadingDots.tsx            # Animación mientras el agente piensa
-│   │       └── StreamingText.tsx          # Texto que aparece token a token
-│   │
-│   ├── lib/
-│   │   ├── api.ts                         # Cliente SSE para el endpoint /chat
-│   │   ├── types.ts                       # Interfaces TypeScript compartidas
-│   │   └── utils.ts                       # Formateo de moneda, fechas, etc.
-│   │
-│   ├── hooks/
-│   │   ├── useChat.ts                     # Hook principal: estado y lógica del chat
-│   │   └── useStream.ts                   # Hook para consumir SSE del backend
-│   │
-│   ├── public/
-│   │   └── logo.svg
-│   │
-│   ├── .env.local.example
-│   ├── tailwind.config.ts
-│   ├── next.config.mjs
-│   ├── tsconfig.json
-│   └── package.json
-│
-├── backend/                               # API FastAPI (Python 3.11)
-│   ├── main.py                            # App FastAPI: CORS, rutas, SSE /chat
-│   │
-│   ├── agent/
-│   │   ├── graph.py                       # Definición del grafo LangGraph
-│   │   ├── state.py                       # AgentState (TypedDict + Pydantic)
-│   │   ├── memory.py                      # Checkpointer para memoria multi-turno
-│   │   ├── tools.py                       # Herramientas LangChain del agente
-│   │   └── nodes/
-│   │       ├── __init__.py
-│   │       ├── symptom_router.py          # Nodo 1: clasificar síntoma con LLM
-│   │       ├── specialty_matcher.py       # Nodo 2: RAG síntoma → especialidad
-│   │       ├── cost_calculator.py         # Nodo 3: motor de reglas de copago
-│   │       └── hospital_ranker.py         # Nodo 4: búsqueda semántica hospitales
-│   │
-│   ├── data/
-│   │   ├── planes.json                    # Planes de seguro con reglas de copago
-│   │   ├── hospitales.json                # Red hospitalaria con especialidades
-│   │   ├── especialidades.json            # Mapeo síntoma → especialidad (30+ entradas)
-│   │   └── seed_chroma.py                 # Script: carga los datos en ChromaDB
-│   │
-│   ├── db/
-│   │   └── chroma/                        # Almacenamiento persistente ChromaDB
-│   │                                      # (incluido en .gitignore)
-│   ├── schemas/
-│   │   ├── request.py                     # Schema entrada: ChatRequest
-│   │   └── response.py                    # Schema salida: HospitalResult, CopayResult
-│   │
-│   ├── tests/
-│   │   ├── test_symptom_router.py         # Pruebas unitarias nodo 1
-│   │   ├── test_cost_calculator.py        # Pruebas unitarias nodo 3
-│   │   └── test_agent_flow.py             # Prueba de integración flujo completo
-│   │
-│   ├── requirements.txt
-│   ├── .env.example
-│   └── Dockerfile
-│
-├── .github/
-│   └── workflows/
-│       ├── ci.yml                         # Lint + tests en cada PR
-│       └── deploy.yml                     # Deploy automático a Render en push a main
-│
-├── docs/
-│   ├── arquitectura.md                    # Diagrama detallado de la arquitectura
-│   ├── datos-mock.md                      # Documentación de los datos ficticios
-│   └── demo-scenarios.md                  # Escenarios dorados para la demo
-│
-├── .gitignore
-├── docker-compose.yml                     # Desarrollo local: backend + ChromaDB
-└── README.md
+    messages: list[dict]            # Historial de la conversación
+    plan_id: int                    # ID del plan de seguro seleccionado
+    deductible_met: bool            # ¿El deducible anual está cumplido?
+    symptom: str                    # Síntoma ingresado por el paciente
+    specialty: str                  # Especialidad determinada por el agente
+    tipo_visita: str                # medico_general | especialista | urgencias | laboratorios
+    copago_amount: float            # Monto de copago calculado en dólares
+    hospitals: list[HospitalResult] # Hospitales rankeados por costo
+    needs_clarification: bool       # ¿El agente necesita más información?
+    clarification_question: str     # Pregunta aclaratoria si aplica
+    error: Optional[str]            # Error si ocurrió alguno
 ```
 
 ---
@@ -225,147 +133,99 @@ copago-estimador/
 
 | Capa | Herramienta | Versión | Justificación |
 |---|---|---|---|
-| Frontend | Next.js + React | 14.x | App Router, soporte SSE nativo, deploy en Vercel con un clic |
-| Estilos | Tailwind CSS + shadcn/ui | 3.x | Componentes accesibles listos para chat, sin tiempo de diseño |
-| Backend | FastAPI (Python) | 0.110+ | Async nativo, streaming SSE, validación Pydantic, rápido de prototipar |
-| Framework agente | LangGraph | 0.1+ | Grafo de estado multi-nodo, memoria con checkpointer, condicionales |
-| Orquestación LLM | LangChain | 0.2+ | Herramientas, prompts, integración con Groq y ChromaDB |
-| Modelo LLM | Groq `llama-3.1-70b-versatile` | — | Tier gratuito, inferencia <1 s, API compatible con OpenAI |
-| Base de datos vectorial | ChromaDB (embebido) | 0.5+ | Sin infraestructura, búsqueda semántica en proceso, persistencia local |
+| Frontend | React + Vite | 19.x / 8.x | SPA liviana, build rápido, deploy directo en Vercel |
+| Estilos | Tailwind CSS | 4.x | Utility-first, responsivo, sin tiempo de diseño |
+| Animaciones | Framer Motion | 12.x | Animaciones fluidas en landing con mínimo código |
+| Markdown | react-markdown + remark-gfm | — | Renderiza respuestas del agente con formato real |
+| Backend | Django + DRF | 5.2 / 3.17 | ORM robusto, admin incluido, serializers nativos |
+| Framework agente | LangGraph | 1.2 | Grafo de estado multi-nodo, memoria con checkpointer |
+| Orquestación LLM | LangChain + langchain-groq | 1.3 / 1.1 | Integración directa con Groq |
+| Modelo LLM | Groq `llama-3.1-8b-instant` | — | Tier gratuito, inferencia rápida |
+| Base de datos | SQLite | — | Sin infraestructura, suficiente para demo |
+| Servidor producción | Gunicorn | 23.x | WSGI production-ready para Django en Render |
 | Despliegue frontend | Vercel | — | Gratuito, HTTPS, deploy automático desde GitHub |
-| Despliegue backend | Render | — | Tier gratuito, soporte Docker, variables de entorno seguras |
+| Despliegue backend | Render | — | Servidor persistente, tier gratuito, soporte Python |
 
 ---
 
-## Requisitos Previos
+## Estructura de Carpetas
 
-Antes de comenzar, asegúrate de tener instalado:
-
-- **Node.js** 18 o superior → [nodejs.org](https://nodejs.org)
-- **Python** 3.11 o superior → [python.org](https://python.org)
-- **Git** → [git-scm.com](https://git-scm.com)
-- **Una API Key de Groq** (gratuita) → [console.groq.com](https://console.groq.com)
-
-Verifica las versiones:
-
-```bash
-node --version    # debe mostrar v18.x o superior
-python --version  # debe mostrar 3.11.x o superior
-git --version
+```
+hackiaton-project/
+│
+├── frontend/                          # Aplicación React + Vite
+│   ├── src/
+│   │   ├── pages/
+│   │   │   ├── LandingPage.tsx        # Selector de plan + deducible + hero
+│   │   │   └── ChatPage.tsx           # Interfaz del chat con Baymax
+│   │   ├── components/
+│   │   │   └── HospitalCard.tsx       # Tarjeta visual de comparación de hospitales
+│   │   ├── App.tsx                    # Router: / → LandingPage, /chat → ChatPage
+│   │   └── index.css
+│   ├── .env.local                     # Variables de entorno (no se sube a Git)
+│   └── package.json
+│
+├── backend/                           # API Django + DRF
+│   ├── agent/                         # Agente LangGraph
+│   │   ├── graph.py                   # Definición del grafo y singleton compilado
+│   │   ├── state.py                   # AgentState (TypedDict)
+│   │   └── nodes/
+│   │       ├── symptom_router.py      # Nodo 1: clasifica síntoma con Groq
+│   │       ├── specialty_matcher.py   # Nodo 2: busca especialidad en DB (ORM)
+│   │       ├── cost_calculator.py     # Nodo 3: calcula copago según reglas del plan
+│   │       └── hospital_ranker.py     # Nodo 4: rankea hospitales por copago y distancia
+│   │
+│   ├── api/                           # App Django principal
+│   │   ├── views.py                   # POST /api/agente/  GET /api/planes/
+│   │   └── urls.py
+│   │
+│   ├── insurance/                     # App: planes, hospitales, especialidades
+│   │   ├── models.py                  # InsurancePlan, Hospital, Specialty,
+│   │   │                              # CopaymentRule, HospitalSpecialty
+│   │   └── fixtures/
+│   │       └── initial_data.json      # Datos mock listos para cargar
+│   │
+│   ├── patients/                      # App: pacientes de ejemplo
+│   │   └── models.py
+│   │
+│   ├── core/                          # Configuración Django
+│   │   └── settings.py                # Variables desde .env, CORS, DRF
+│   │
+│   ├── .env.example                   # Plantilla de variables de entorno
+│   └── requirements.txt
+│
+├── .gitignore
+└── README.md
 ```
 
 ---
 
-## Instalación y Configuración
+## Modelos de Datos
 
-### 1. Clonar el repositorio
-
-```bash
-git clone https://github.com/tu-org/copago-estimador.git
-cd copago-estimador
 ```
-
-### 2. Configurar el Backend
-
-```bash
-# Entrar a la carpeta del backend
-cd backend
-
-# Crear entorno virtual
-python -m venv .venv
-
-# Activar el entorno virtual
-# En macOS / Linux:
-source .venv/bin/activate
-# En Windows (CMD):
-.venv\Scripts\activate.bat
-# En Windows (PowerShell):
-.venv\Scripts\Activate.ps1
-
-# Instalar dependencias
-pip install -r requirements.txt
-
-# Copiar y configurar variables de entorno
-cp .env.example .env
-# Abre .env con tu editor y agrega tu GROQ_API_KEY
-
-# Cargar los datos mock en ChromaDB (solo la primera vez)
-python data/seed_chroma.py
-
-# Iniciar el servidor de desarrollo
-uvicorn main:app --reload --port 8000
-```
-
-El backend estará disponible en: `http://localhost:8000`
-Documentación interactiva (Swagger): `http://localhost:8000/docs`
-
-### 3. Configurar el Frontend
-
-Abre una nueva terminal:
-
-```bash
-# Entrar a la carpeta del frontend
-cd frontend
-
-# Instalar dependencias
-npm install
-
-# Copiar y configurar variables de entorno
-cp .env.local.example .env.local
-# Edita .env.local y establece NEXT_PUBLIC_API_URL=http://localhost:8000
-
-# Iniciar el servidor de desarrollo
-npm run dev
-```
-
-La aplicación estará disponible en: `http://localhost:3000`
-
-### 4. (Opcional) Ejecutar con Docker Compose
-
-Si prefieres no instalar Python localmente:
-
-```bash
-# Desde la raíz del proyecto
-cp backend/.env.example backend/.env
-# Agrega tu GROQ_API_KEY en backend/.env
-
-docker-compose up --build
-```
-
-Esto levanta el backend en el puerto `8000` y el frontend en el `3000` automáticamente.
-
----
-
-## Variables de Entorno
-
-### Backend — `backend/.env`
-
-```env
-# --- LLM ---
-GROQ_API_KEY=gsk_xxxxxxxxxxxxxxxxxxxxxxxxxxxx   # API Key de Groq (requerida)
-LLM_MODEL=llama-3.1-70b-versatile               # Modelo de Groq a usar
-LLM_TEMPERATURE=0.2                              # Temperatura baja para respuestas consistentes
-LLM_MAX_TOKENS=1024                              # Tokens máximos por respuesta
-
-# --- ChromaDB ---
-CHROMA_PERSIST_DIR=./db/chroma                  # Directorio de persistencia vectorial
-CHROMA_COLLECTION_HOSPITALES=hospitales         # Nombre de la colección de hospitales
-CHROMA_COLLECTION_ESPECIALIDADES=especialidades # Nombre de la colección de especialidades
-
-# --- API ---
-ALLOWED_ORIGINS=http://localhost:3000,https://copago-estimador.vercel.app
-API_PORT=8000
-
-# --- Agente ---
-MAX_CLARIFICATION_TURNS=2   # Máximo de turnos de aclaración antes de responder igual
-TOP_K_HOSPITALS=3           # Número de hospitales a mostrar en la comparación
-```
-
-### Frontend — `frontend/.env.local`
-
-```env
-NEXT_PUBLIC_API_URL=http://localhost:8000   # URL base del backend
-NEXT_PUBLIC_APP_NAME=Estimador de Copago   # Nombre mostrado en la UI
+InsurancePlan                       Hospital
+──────────────────────              ──────────────────────
+id                                  id
+nombre                              nombre
+descripcion                         ciudad
+deducible_anual                     direccion
+fuera_de_red_multiplicador          es_red (bool)
+        │                           distancia_km
+        │                           calificacion
+        ▼                           telefono
+CopaymentRule                             │
+──────────────────────                    │
+plan_id (FK)              HospitalSpecialty
+tipo_visita               ──────────────────────
+monto_deducible_cumplido  hospital_id (FK)
+monto_deducible_no_cumplido specialty_id (FK)
+                                          │
+                                          ▼
+                                    Specialty
+                                    ──────────────────────
+                                    nombre
+                                    tipo_visita
+                                    urgencia
 ```
 
 ---
@@ -374,236 +234,171 @@ NEXT_PUBLIC_APP_NAME=Estimador de Copago   # Nombre mostrado en la UI
 
 El proyecto incluye datos ficticios pero realistas. No se requiere ninguna API de seguros real.
 
-### Planes de Seguro — `backend/data/planes.json`
+### Planes de Seguro
 
-```json
-[
-  {
-    "id": "plan-basico",
-    "nombre": "Plan Básico",
-    "deducible_anual": 1500,
-    "copagos": {
-      "medico_general": { "deducible_cumplido": 20, "deducible_no_cumplido": 80 },
-      "especialista":   { "deducible_cumplido": 40, "deducible_no_cumplido": 150 },
-      "urgencias":      { "deducible_cumplido": 150, "deducible_no_cumplido": 300 },
-      "laboratorios":   { "deducible_cumplido": 15, "deducible_no_cumplido": 60 }
-    },
-    "fuera_de_red_multiplicador": 2.5
-  },
-  {
-    "id": "plan-plata",
-    "nombre": "Plan Plata",
-    "deducible_anual": 800,
-    "copagos": {
-      "medico_general": { "deducible_cumplido": 15, "deducible_no_cumplido": 50 },
-      "especialista":   { "deducible_cumplido": 30, "deducible_no_cumplido": 100 },
-      "urgencias":      { "deducible_cumplido": 100, "deducible_no_cumplido": 200 },
-      "laboratorios":   { "deducible_cumplido": 10, "deducible_no_cumplido": 40 }
-    },
-    "fuera_de_red_multiplicador": 2.0
-  },
-  {
-    "id": "plan-oro",
-    "nombre": "Plan Oro",
-    "deducible_anual": 300,
-    "copagos": {
-      "medico_general": { "deducible_cumplido": 10, "deducible_no_cumplido": 30 },
-      "especialista":   { "deducible_cumplido": 20, "deducible_no_cumplido": 60 },
-      "urgencias":      { "deducible_cumplido": 75, "deducible_no_cumplido": 150 },
-      "laboratorios":   { "deducible_cumplido": 5,  "deducible_no_cumplido": 20 }
-    },
-    "fuera_de_red_multiplicador": 1.5
-  },
-  {
-    "id": "plan-platino",
-    "nombre": "Plan Platino",
-    "deducible_anual": 0,
-    "copagos": {
-      "medico_general": { "deducible_cumplido": 5,  "deducible_no_cumplido": 5 },
-      "especialista":   { "deducible_cumplido": 15, "deducible_no_cumplido": 15 },
-      "urgencias":      { "deducible_cumplido": 50, "deducible_no_cumplido": 50 },
-      "laboratorios":   { "deducible_cumplido": 0,  "deducible_no_cumplido": 0 }
-    },
-    "fuera_de_red_multiplicador": 1.2
-  }
-]
-```
+| Plan | Deducible Anual | Médico General | Especialista | Urgencias | Laboratorios |
+|---|---|---|---|---|---|
+| Plan Básico | $1,500 | $20 / $80 | $40 / $150 | $150 / $300 | $15 / $60 |
+| Plan Plata | $800 | $15 / $50 | $30 / $100 | $100 / $200 | $10 / $40 |
+| Plan Oro | $300 | $10 / $30 | $20 / $60 | $75 / $150 | $5 / $20 |
+| Plan Platino | $0 | $5 / $5 | $15 / $15 | $50 / $50 | $0 / $0 |
 
-### Hospitales — `backend/data/hospitales.json`
+> Formato de copagos: `deducible cumplido / deducible no cumplido`
 
-```json
-[
-  {
-    "id": "h001",
-    "nombre": "Hospital del Norte",
-    "ciudad": "Ciudad A",
-    "distancia_km": 2.1,
-    "en_red": true,
-    "especialidades": ["cardiologia", "neurologia", "medicina_general", "urgencias"],
-    "calificacion": 4.5,
-    "telefono": "+593 2 555-0101"
-  },
-  {
-    "id": "h002",
-    "nombre": "Clínica San Marcos",
-    "ciudad": "Ciudad A",
-    "distancia_km": 4.7,
-    "en_red": true,
-    "especialidades": ["cardiologia", "ortopedia", "dermatologia", "laboratorios"],
-    "calificacion": 4.2,
-    "telefono": "+593 2 555-0102"
-  },
-  {
-    "id": "h003",
-    "nombre": "Centro Médico Sur",
-    "ciudad": "Ciudad A",
-    "distancia_km": 1.2,
-    "en_red": true,
-    "especialidades": ["urgencias", "medicina_general", "pediatria"],
-    "calificacion": 3.9,
-    "telefono": "+593 2 555-0103"
-  },
-  {
-    "id": "h004",
-    "nombre": "Hospital Internacional",
-    "ciudad": "Ciudad B",
-    "distancia_km": 12.5,
-    "en_red": false,
-    "especialidades": ["cardiologia", "oncologia", "neurologia", "cirugia"],
-    "calificacion": 4.8,
-    "telefono": "+593 4 555-0104"
-  }
-]
-```
+### Hospitales
 
-### Mapeo de Síntomas — `backend/data/especialidades.json`
+| Hospital | Ciudad | Red | Distancia | Calificación | Especialidades |
+|---|---|---|---|---|---|
+| Hospital del Norte | Ciudad A | ✅ En red | 2.1 km | 4.5 ⭐ | Cardiología, Neurología, Medicina General, Urgencias |
+| Clínica San Marcos | Ciudad A | ✅ En red | 4.7 km | 4.2 ⭐ | Cardiología, Ortopedia, Dermatología, Laboratorios |
+| Centro Médico Sur | Ciudad A | ✅ En red | 1.2 km | 3.9 ⭐ | Urgencias, Medicina General, Pediatría |
+| Hospital Internacional | Ciudad B | ⚠️ Fuera de red | 12.5 km | 4.8 ⭐ | Cardiología, Neurología, Neumología |
 
-```json
-[
-  { "sintoma": "dolor en el pecho, dificultad para respirar, presión en el pecho", "especialidad": "cardiologia", "tipo_visita": "urgencias", "urgencia": "alta" },
-  { "sintoma": "dolor de cabeza severo repentino, el peor de mi vida", "especialidad": "neurologia", "tipo_visita": "urgencias", "urgencia": "alta" },
-  { "sintoma": "dolor de rodilla, inflamación de rodilla, lesión deportiva", "especialidad": "ortopedia", "tipo_visita": "especialista", "urgencia": "media" },
-  { "sintoma": "fiebre en niños, tos en niños, resfriado infantil", "especialidad": "pediatria", "tipo_visita": "medico_general", "urgencia": "baja" },
-  { "sintoma": "erupción cutánea, manchas en la piel, picazón generalizada", "especialidad": "dermatologia", "tipo_visita": "especialista", "urgencia": "baja" },
-  { "sintoma": "dolor de espalda, lumbalgia, ciática", "especialidad": "ortopedia", "tipo_visita": "medico_general", "urgencia": "baja" },
-  { "sintoma": "dolor de cabeza frecuente, migraña con aura, mareo", "especialidad": "neurologia", "tipo_visita": "especialista", "urgencia": "media" },
-  { "sintoma": "glucosa alta, sed excesiva, diabetes", "especialidad": "endocrinologia", "tipo_visita": "especialista", "urgencia": "media" },
-  { "sintoma": "examen de sangre, análisis de orina, chequeo general", "especialidad": "medicina_general", "tipo_visita": "laboratorios", "urgencia": "baja" },
-  { "sintoma": "tos persistente, dificultad para respirar crónica, asma", "especialidad": "neumologia", "tipo_visita": "especialista", "urgencia": "media" }
-]
-```
+### Especialidades disponibles
 
-Para agregar o modificar datos, edita los archivos JSON y ejecuta `python data/seed_chroma.py` nuevamente.
+`cardiologia` · `neurologia` · `ortopedia` · `pediatria` · `dermatologia` · `medicina_general` · `endocrinologia` · `neumologia` · `urgencias` · `laboratorios`
 
 ---
 
-## Uso de la Aplicación
+## Endpoints de la API
 
-### Flujo del usuario
+### `POST /api/agente/`
 
-```
-1. El paciente abre la aplicación
-        │
-        ▼
-2. Selecciona su plan de seguro en el onboarding
-   (Plan Básico / Plata / Oro / Platino)
-        │
-        ▼
-3. Indica si su deducible anual ya fue cumplido
-        │
-        ▼
-4. Escribe su síntoma en el chat en lenguaje natural
-        │
-        ▼
-5. El agente procesa (puede hacer preguntas aclaratorias)
-        │
-        ▼
-6. Recibe una tarjeta con:
-   - Especialidad recomendada
-   - Tipo de visita (general / especialista / urgencias)
-   - Top 3 hospitales de la red con copago exacto
-   - Recomendación del hospital más conveniente
-        │
-        ▼
-7. Puede hacer preguntas de seguimiento:
-   "¿Y si voy a urgencias en cambio?"
-   "¿Cuánto cuesta el laboratorio?"
-   "¿Ese hospital tiene estacionamiento?"
-```
-
-### Endpoints de la API
-
-#### `POST /chat`
-
-Envía un mensaje al agente y recibe la respuesta en streaming (SSE).
+Envía un síntoma al agente y recibe la respuesta con copago y hospitales.
 
 **Request body:**
 ```json
 {
-  "message": "Tengo dolor fuerte en el pecho y me cuesta respirar",
+  "plan_id": 2,
+  "sintoma": "Tengo dolor fuerte en el pecho y me cuesta respirar",
   "session_id": "usuario-abc-123",
-  "plan_id": "plan-plata",
   "deductible_met": false
 }
 ```
 
-**Respuesta (SSE):**
-```
-data: {"type": "token", "content": "Basándome"}
-data: {"type": "token", "content": " en tus"}
-data: {"type": "token", "content": " síntomas..."}
-data: {"type": "hospitals", "data": [{...}, {...}, {...}]}
-data: {"type": "done"}
-```
-
-#### `GET /health`
-
-Verifica que el backend esté activo.
-
+**Response:**
 ```json
-{ "status": "ok", "version": "1.0.0" }
+{
+  "mensaje_agente": "Basándome en tus síntomas te recomiendo acudir a **Cardiologia**...",
+  "especialidad_sugerida": "cardiologia",
+  "tipo_visita": "urgencias",
+  "copago_estimado": 200.0,
+  "needs_clarification": false,
+  "clarification_question": "",
+  "opciones": [
+    {
+      "id": 1,
+      "nombre": "Hospital del Norte",
+      "ciudad": "Ciudad A",
+      "distancia_km": 2.1,
+      "calificacion": 4.5,
+      "telefono": "+593 2 555-0101",
+      "es_red": true,
+      "especialidad": "cardiologia",
+      "tipo_visita": "urgencias",
+      "copago": 200.0
+    }
+  ]
+}
 ```
 
-#### `GET /planes`
+### `GET /api/planes/`
 
-Devuelve la lista de planes de seguro disponibles.
+Devuelve los planes disponibles para el selector del frontend.
 
 ```json
 [
-  { "id": "plan-basico", "nombre": "Plan Básico", "deducible_anual": 1500 },
-  { "id": "plan-plata",  "nombre": "Plan Plata",  "deducible_anual": 800 },
-  ...
+  { "id": 1, "nombre": "Plan Básico",  "descripcion": "...", "deducible_anual": 1500.0 },
+  { "id": 2, "nombre": "Plan Plata",   "descripcion": "...", "deducible_anual": 800.0  },
+  { "id": 3, "nombre": "Plan Oro",     "descripcion": "...", "deducible_anual": 300.0  },
+  { "id": 4, "nombre": "Plan Platino", "descripcion": "...", "deducible_anual": 0.0    }
 ]
 ```
+
+### `GET /api/paciente/<numero_poliza>/`
+
+Devuelve los datos de un paciente por número de póliza.
+
+---
+
+## Instalación y Configuración
+
+### Requisitos previos
+
+- **Node.js** 18 o superior
+- **Python** 3.11 o superior
+- **API Key de Groq** (gratuita) → [console.groq.com](https://console.groq.com)
+
+### Backend
+
+```bash
+cd backend
+
+# Crear y activar entorno virtual
+python3.11 -m venv .venv
+source .venv/bin/activate        # Linux / macOS
+# .venv\Scripts\activate         # Windows
+
+# Instalar dependencias
+pip install -r requirements.txt
+
+# Configurar variables de entorno
+cp .env.example .env
+# Abre .env y agrega tu GROQ_API_KEY
+
+# Crear base de datos y cargar datos mock
+python manage.py migrate
+python manage.py loaddata insurance/fixtures/initial_data.json
+
+# Iniciar servidor
+python manage.py runserver
+```
+
+Backend disponible en `http://localhost:8000`
+
+### Frontend
+
+```bash
+cd frontend
+
+npm install
+
+# Crear archivo de entorno
+echo "VITE_API_URL=http://localhost:8000" > .env.local
+
+npm run dev
+```
+
+Frontend disponible en `http://localhost:5173`
+
+---
+
+## Despliegue en Producción
+
+El proyecto usa arquitectura split: **frontend en Vercel** y **backend en Render**.
 
 ---
 
 ## Ejemplos de Conversación
 
-### Escenario 1 — Dolor en el pecho (alta urgencia)
+### Escenario 1 — Urgencia clara
 
 ```
 Paciente: Tengo dolor fuerte en el pecho y me cuesta respirar
 
-Agente: Basándome en tus síntomas, te recomiendo acudir a Urgencias o
-        un Cardiólogo lo antes posible. Esto puede ser señal de algo serio.
+Agente: Basándome en tus síntomas te recomiendo acudir a Cardiología
+        (visita tipo: urgencias). Con tu Plan Plata (deducible no cumplido),
+        estas son tus opciones disponibles:
 
-        Con tu Plan Plata (deducible no cumplido), estos son tus mejores
-        opciones en la red:
+        🏆 Recomendación: Hospital del Norte — menor copago ($200)
+        y a solo 2.1 km de distancia.
 
         ┌──────────────────────┬──────────────┬──────────┬────────────┐
         │ Hospital             │ Especialidad │ Copago   │ Distancia  │
         ├──────────────────────┼──────────────┼──────────┼────────────┤
-        │ ✅ Centro Médico Sur  │ Urgencias    │ $200     │ 1.2 km     │
-        │ ✅ Hospital del Norte │ Cardiología  │ $100     │ 2.1 km     │
-        │ ✅ Clínica San Marcos │ Cardiología  │ $100     │ 4.7 km     │
+        │ 🏆 Hospital del Norte │ Cardiología  │ $200     │ 2.1 km     │
+        │ Clínica San Marcos   │ Cardiología  │ $200     │ 4.7 km     │
         └──────────────────────┴──────────────┴──────────┴────────────┘
-
-        🏆 Recomendación: Hospital del Norte — menor copago para
-        cardiología ($100) y buena calificación (4.5/5).
-
-        ⚠️  Si el dolor es muy intenso, llama al 911 o ve directo a
-        Urgencias más cercana sin importar la red.
 ```
 
 ### Escenario 2 — Síntoma ambiguo
@@ -611,179 +406,36 @@ Agente: Basándome en tus síntomas, te recomiendo acudir a Urgencias o
 ```
 Paciente: Me duele la cabeza
 
-Agente: Para darte la recomendación más precisa, ¿podrías decirme
-        cómo es ese dolor de cabeza?
+Agente: Para darte la recomendación más precisa, ¿cómo describirías
+        ese dolor? ¿Es repentino e intenso, una migraña con náuseas,
+        o un dolor leve por estrés?
 
-        a) Es un dolor repentino y muy fuerte, "el peor de mi vida"
-        b) Es una migraña con náuseas o sensibilidad a la luz
-        c) Es un dolor leve después de estrés o muchas horas frente
-           a la pantalla
+Paciente: Es una migraña con náuseas
 
-Paciente: Es (b), tengo migraña con náuseas
-
-Agente: Entendido. Para migraña con síntomas asociados te conviene
-        ver un Neurólogo.
-
-        Con tu Plan Plata (deducible cumplido):
-
-        ┌──────────────────────┬──────────────┬──────────┬────────────┐
-        │ Hospital             │ Especialidad │ Copago   │ Distancia  │
-        ├──────────────────────┼──────────────┼──────────┼────────────┤
-        │ ✅ Hospital del Norte │ Neurología   │ $30      │ 2.1 km     │
-        └──────────────────────┴──────────────┴──────────┴────────────┘
-
-        💡 Solo Hospital del Norte tiene Neurología en tu red.
-           Copago: $30 (deducible ya cumplido).
+Agente: Basándome en tus síntomas te recomiendo acudir a Neurología...
 ```
 
-### Escenario 3 — Pregunta de seguimiento
+### Escenario 3 — Mejor opción fuera de red
 
 ```
-Paciente: ¿Y si en cambio voy a urgencias?
-
-Agente: Si vas a Urgencias con tu Plan Plata (deducible cumplido),
-        el copago sería $100 — más caro que ver al neurólogo ($30).
-
-        A menos que los síntomas sean muy graves, te conviene más
-        pedir cita con el Neurólogo en Hospital del Norte.
+Agente: Entendemos que no siempre es fácil encontrar la opción perfecta.
+        Aunque Hospital Internacional está fuera de tu red, es la alternativa
+        más conveniente considerando su cercanía (12.5 km) y su copago
+        estimado de $250. Te recomendamos llamarles antes para confirmar
+        costos con tu plan.
 ```
-
----
-
-## Despliegue en Producción
-
-### Frontend → Vercel (recomendado)
-
-```bash
-# Opción 1: Desde la CLI de Vercel
-cd frontend
-npx vercel --prod
-
-# Opción 2: Conectar el repositorio en vercel.com
-# → New Project → Import GitHub repo → Deploy
-```
-
-**Variables de entorno en Vercel:**
-- `NEXT_PUBLIC_API_URL` = URL de tu backend en Render (ej: `https://copago-api.onrender.com`)
-
-### Backend → Render
-
-1. Crea una cuenta en [render.com](https://render.com)
-2. Haz clic en **New → Web Service**
-3. Conecta tu repositorio de GitHub
-4. Configura el servicio:
-
-| Campo | Valor |
-|---|---|
-| Root Directory | `backend` |
-| Runtime | `Python 3` |
-| Build Command | `pip install -r requirements.txt && python data/seed_chroma.py` |
-| Start Command | `uvicorn main:app --host 0.0.0.0 --port $PORT` |
-
-5. Agrega variables de entorno:
-   - `GROQ_API_KEY` = tu API key de Groq
-   - `ALLOWED_ORIGINS` = `https://copago-estimador.vercel.app`
-
-> **Importante — Render Free Tier:** El servidor se suspende tras 15 minutos de inactividad. Configura un ping automático con [UptimeRobot](https://uptimerobot.com) apuntando a `https://copago-api.onrender.com/health` cada 10 minutos para mantenerlo activo durante la demo.
-
-### Verificar el despliegue
-
-```bash
-# Verificar que el backend esté vivo
-curl https://copago-api.onrender.com/health
-
-# Verificar los planes disponibles
-curl https://copago-api.onrender.com/planes
-```
-
----
-
-## Plan de Desarrollo (3 Días)
-
-### Día 1 — Fundación e Infraestructura
-
-**Objetivo:** Que el agente responda end-to-end, aunque sin pulir.
-
-| Hora | Tarea |
-|---|---|
-| 9:00 – 10:00 | Inicializar repositorio, estructura de carpetas, CI básico |
-| 10:00 – 12:00 | Crear datos mock (planes, hospitales, especialidades) |
-| 12:00 – 14:00 | Construir el grafo LangGraph con los 4 nodos básicos |
-| 14:00 – 15:00 | Endpoint `POST /chat` con streaming SSE en FastAPI |
-| 15:00 – 17:00 | Shell básico del chat en Next.js (burbujas, entrada de texto) |
-| 17:00 – 18:00 | Primer despliegue en Vercel + Render (aunque sea sin estilos) |
-
-**✅ Entregable del día:** El agente responde síntoma → especialidad → copago, y hay una URL pública funcionando.
-
----
-
-### Día 2 — Inteligencia del Agente
-
-**Objetivo:** RAG real, cálculo de copago preciso, memoria multi-turno.
-
-| Hora | Tarea |
-|---|---|
-| 9:00 – 10:30 | Cargar hospitales y especialidades en ChromaDB con embeddings |
-| 10:30 – 12:00 | Implementar nodo RAG: retrieval semántico de hospitales |
-| 12:00 – 13:30 | Motor de cálculo de copago (deducible, tipo de visita, multiplicador fuera de red) |
-| 13:30 – 15:00 | Memoria multi-turno con LangGraph checkpointer |
-| 15:00 – 16:30 | Preguntas aclaratorias automáticas cuando el síntoma es ambiguo |
-| 16:30 – 18:00 | Pruebas con 10 síntomas diferentes, ajustar prompts |
-
-**✅ Entregable del día:** El agente compara hospitales, calcula copagos exactos y recuerda el contexto de la conversación.
-
----
-
-### Día 3 — Pulido y Entrega
-
-**Objetivo:** UI de calidad, casos borde cubiertos, demo lista, entregables completos.
-
-| Hora | Tarea |
-|---|---|
-| 9:00 – 10:30 | Rediseño de la UI: tarjeta de comparación de hospitales, selector de plan |
-| 10:30 – 11:30 | Streaming de tokens en el frontend (sensación de IA real) |
-| 11:30 – 12:30 | Flujo de onboarding: selector de plan + deducible antes del chat |
-| 12:30 – 13:30 | Manejo de casos borde: síntoma sin cobertura, hospital fuera de red, deducible no cumplido |
-| 13:30 – 15:00 | Smoke-test con 15 escenarios, corrección de bugs críticos |
-| 15:00 – 16:30 | Escribir README final, grabar GIF de demo, actualizar documentación |
-| 16:30 – 17:30 | Deploy final, verificar URL pública y repositorio limpio |
-| 17:30 – 18:00 | Preparar presentación de 3–5 minutos con los 3 escenarios dorados |
-
-**✅ Entregables finales:**
-- 🔗 URL pública de la aplicación funcionando
-- 📁 Repositorio GitHub/GitLab con código limpio y README completo
-
----
-
-## Decisiones Técnicas
-
-### ¿Por qué LangGraph y no LangChain Agent simple?
-
-El flujo de este agente tiene nodos con responsabilidades claramente separadas (clasificar, buscar, calcular, rankear). LangGraph permite modelar exactamente eso como un grafo de estados, con condicionales (si el síntoma es ambiguo → nodo de aclaración, si no → continuar). Un agente ReAct de LangChain sería menos predecible y más difícil de depurar en un hackathon.
-
-### ¿Por qué Groq y no OpenAI?
-
-Groq ofrece un tier gratuito con `llama-3.1-70b-versatile` con velocidades de inferencia muy superiores (tokens/s). Para una demo en vivo, la velocidad importa. La API es 100% compatible con el cliente de OpenAI, por lo que cambiar de modelo es un cambio de una línea.
-
-### ¿Por qué ChromaDB embebido y no Pinecone o Weaviate?
-
-Para un hackathon de 3 días, ChromaDB embebido elimina toda la fricción de configuración de infraestructura. Corre en proceso, persiste en disco, y su API es simple. Para producción real se migra a ChromaDB Cloud o Pinecone sin cambiar el código del agente.
-
-### ¿Por qué datos mock y no APIs reales de seguros?
-
-Las APIs reales de seguros (Availity, Change Healthcare, etc.) requieren contratos, credenciales corporativas y semanas de integración. Para demostrar el concepto del agente, datos ficticios bien estructurados son equivalentes desde el punto de vista del jurado. El valor está en la lógica del agente, no en la fuente de datos.
 
 ---
 
 ## Equipo
 
-Desarrollado en **[Nombre del Hackathon]** — **[Fecha]**
+Desarrollado en **HackIAthon** — **21/05/2026**
 
 | Nombre | Rol |
 |---|---|
-| — | Agente IA / Backend (LangGraph + FastAPI) |
-| — | Frontend / UX (Next.js + React) |
-| — | Datos / Prompt Engineering / QA |
+| Carlos Raúl Tingo Borbor - [TingoCarlos08](https://github.com/TingoCarlos08)| Frontend |
+| Nahin Isaias Espinoza Ortiz - [nahinespinoza](https://github.com/nahinespinoza)  | Backend |
+| Kevin Fernando Maldonado Paredes - [kfmaldon](https://github.com/sirprog)| Agente |
 
 ---
 
